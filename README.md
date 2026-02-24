@@ -61,4 +61,4 @@ This script relies on the HTML structure of Storyline’s published output. Futu
 ## Background
 
 Additional context and implementation rationale are available here:  
-LINK_TO_LINKEDIN_POST
+https://www.linkedin.com/pulse/het-script-dat-je-niet-wilt-gebruiken-chris-dorna-mjeye
