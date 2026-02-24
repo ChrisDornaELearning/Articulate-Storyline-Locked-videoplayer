@@ -36,7 +36,7 @@ When unlocked, all restrictions are removed.
 
 ## Articulate Review
 
-[View the published project](PASTE_REVIEW_LINK_HERE)
+[View the published project](https://360.articulate.com/review/content/b22d968d-65b0-4a0f-9bdb-90c6c8a0c9b5/review)
 
 ## Requirements
 
