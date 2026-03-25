@@ -27,7 +27,13 @@ When locked, the script:
 - monitors the DOM to remain effective even when Storyline rebuilds the player  
 
 When unlocked, all restrictions are removed.
+
 ## Works on a single slide or on the masterslide
+You can use this script on a regular slide (if your project contains only one video) or on the master slide. In the latter case, you need an additional variable called **`startJavaScript`**.
+
+On the slide where a video needs to be (un)locked, set the variables **`videoObjectId`** and **`videoLocked`**, and then toggle the **`startJavaScript`** variable.
+
+On the master slide, add a trigger with the JavaScript that fires when the **`startJavaScript`** variable changes.
 
 
 ## Repository contents
