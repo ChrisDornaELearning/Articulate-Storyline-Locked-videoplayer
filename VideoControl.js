@@ -3,19 +3,16 @@
 // Variabelen:
 //   videoObjectId (Tekst)
 //   videoLocked   (True/False)
-// + korte developer alert bij ongeldige ID
 //
-// Review-proof update:
-// - In Articulate Review draait content vaak in (cross-origin) iframes.
-// - Daarom starten we ALTIJD met het huidige document (document) en proberen
-//   top/parent/iframe contentDocument alleen als dat same-origin toegankelijk is.
+// Masterslide-proof:
+// - Geen developer popup meer bij ontbrekende object-id
+// - Als geen geldige videoObjectId aanwezig is: stil stoppen
 // ======================================================
 
 (function () {
 
   const VAR_VIDEO_ID = "videoObjectId";
   const VAR_LOCKED   = "videoLocked";
-  const ALERT_DELAY  = 3000;
 
   // ----------------------------
   // Storyline variabelen uitlezen (nieuw/legacy fallback)
@@ -31,37 +28,28 @@
   const LOCKED   = !!slGetVar(VAR_LOCKED);
 
   // ----------------------------
+  // Geen video-id? Dan stil stoppen
+  // ----------------------------
+  if (!VIDEO_ID) return;
+
+  // ----------------------------
   // State per video-id
   // ----------------------------
-  const KEY = "__slVideoLock_" + (VIDEO_ID || "__noid__");
+  const KEY = "__slVideoLock_" + VIDEO_ID;
   window[KEY] = window[KEY] || {};
   const G = window[KEY];
 
   const safe = f => { try { return f(); } catch { return null; } };
 
   // ----------------------------
-  // Developer alert (1x)
-  // ----------------------------
-  function devAlert() {
-    if (G.alertShown) return;
-    G.alertShown = true;
-    alert("Storyline video script: videoObjectId niet gevonden:\n" + (VIDEO_ID || "(leeg)"));
-  }
-
-  // ----------------------------
   // Review-proof docs verzamelen
-  // - Altijd: huidige document
-  // - Optioneel: parent/top als same-origin
-  // - Optioneel: iframe.contentDocument als same-origin
   // ----------------------------
   function collectDocs() {
-    const docs = new Set([document]); // ✅ werkt altijd, ook in Review
+    const docs = new Set([document]);
 
-    // probeer top doc (kan cross-origin zijn → safe() maakt dan null)
     const topDoc = safe(() => window.top.document);
     if (topDoc) docs.add(topDoc);
 
-    // probeer parent-chain docs (same-origin only)
     let w = window;
     for (let i = 0; i < 10 && w; i++) {
       const d = safe(() => w.document);
@@ -71,7 +59,6 @@
       w = p;
     }
 
-    // voeg same-origin iframe docs toe
     for (const d of Array.from(docs)) {
       const iframes = safe(() => Array.from(d.querySelectorAll("iframe"))) || [];
       for (const f of iframes) {
@@ -87,10 +74,7 @@
   // Video vinden: container op ID → <video> erbinnen
   // ----------------------------
   function findVideo() {
-    if (!VIDEO_ID) return {};
-
     for (const d of collectDocs()) {
-
       const c =
         d.querySelector?.(`[data-model-id='${VIDEO_ID}']`) ||
         d.querySelector?.(`[data-acc-id='${VIDEO_ID}']`) ||
@@ -140,13 +124,15 @@
     const tol = 0.25;
 
     const tu = () => {
-      if (!video.seeking && !video.paused && video.currentTime > last)
+      if (!video.seeking && !video.paused && video.currentTime > last) {
         last = video.currentTime;
+      }
     };
 
     const clamp = () => {
-      if (Math.abs(video.currentTime - last) > tol)
+      if (Math.abs(video.currentTime - last) > tol) {
         video.currentTime = last;
+      }
     };
 
     video.addEventListener("timeupdate", tu);
@@ -171,30 +157,26 @@
   }
 
   // ----------------------------
-  // Apply: lock/unlock + alert logic
+  // Cleanup
+  // ----------------------------
+  function cleanup() {
+    if (G.mo) G.mo.disconnect();
+    if (G.iv) clearInterval(G.iv);
+
+    delete G.mo;
+    delete G.iv;
+  }
+
+  // Oude watcher opruimen als script opnieuw draait
+  cleanup();
+
+  // ----------------------------
+  // Apply
   // ----------------------------
   function apply() {
-
-    if (!VIDEO_ID) {
-      devAlert();
-      return;
-    }
-
     const { video, doc } = findVideo();
 
-    // Niet gevonden → na delay 1x alert (layers/late init respecteren)
-    if (!video || !doc) {
-      if (!G.alertTimer) {
-        G.alertTimer = setTimeout(() => {
-          if (!findVideo().video) devAlert();
-          G.alertTimer = null;
-        }, ALERT_DELAY);
-      }
-      return;
-    }
-
-    // Wel gevonden → reset alert flag (zodat latere echte fout weer kan melden)
-    G.alertShown = false;
+    if (!video || !doc) return;
 
     if (LOCKED) {
       injectCss(doc);
@@ -207,30 +189,18 @@
   }
 
   // ----------------------------
-  // Cleanup: observers/timers stoppen
-  // ----------------------------
-  function cleanup() {
-    if (G.mo) G.mo.disconnect();
-    if (G.iv) clearInterval(G.iv);
-
-    delete G.mo;
-    delete G.iv;
-
-    if (G.alertTimer) clearTimeout(G.alertTimer);
-    delete G.alertTimer;
-  }
-
-  // ----------------------------
   // Start
   // ----------------------------
   apply();
 
   if (LOCKED) {
-    // Blijf toepassen: DOM kan later veranderen (hover/layers/late init)
     G.mo = new MutationObserver(apply);
-    G.mo.observe(document.documentElement, { childList: true, subtree: true, attributes: true });
+    G.mo.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+      attributes: true
+    });
 
-    // Extra back-up polling
     G.iv = setInterval(apply, 300);
   }
 
