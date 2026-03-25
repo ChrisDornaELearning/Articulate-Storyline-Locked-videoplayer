@@ -27,6 +27,8 @@ When locked, the script:
 - monitors the DOM to remain effective even when Storyline rebuilds the player  
 
 When unlocked, all restrictions are removed.
+## Works on a single slide or on the masterslide
+
 
 ## Repository contents
 
